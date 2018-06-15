@@ -3,6 +3,7 @@
 const net = require('net')
 const prompt = require('prompt')
 const uuid = require('uuid/v1')
+const colors = require('colors')
 
 const port = 1995
 const messages = {}
@@ -15,7 +16,7 @@ class Peer {
     connectedPeers.push(this)
     connectionTable[this.host] = true
 
-    console.log('peer connected', this.host)
+    console.log('new peer'.green, this.host)
 
     peer.on('data', (data) => {
       try {
@@ -32,17 +33,17 @@ class Peer {
           broadcast(msg, peer)
         }
       } catch(err) {
-        console.log('Invalid Message Received')
+        console.log('Invalid Message Received'.red)
       }
     })
 
     peer.on('error', () => {
-      console.log('peer error', this.host)
+      console.log('peer error'.red, this.host)
       removePeer()
     })
 
     peer.on('end', () => {
-      console.log('peer left', this.host)
+      console.log('peer left'.red, this.host)
       removePeer()
     })
 
