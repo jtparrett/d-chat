@@ -47,7 +47,7 @@ class Peer {
     })
 
     const removePeer = () => {
-      connectedPeers.slice(connectedPeers.indexOf(this), 1)
+      connectedPeers.splice(connectedPeers.indexOf(this), 1)
       delete connectionTable[this.host]
     }
 
