@@ -16,20 +16,26 @@ class Peer {
     console.log('peer connected', this.host)
 
     peer.on('data', (data) => {
-      const msg = data.toString()
-      if(msg.indexOf('#peer-') !== 0) return
-      console.log(msg)
-      const parts = msg.replace(/#peer-/g, '').split('^^>')
-      this[parts[0]] && this[parts[0]](JSON.parse(parts[1]))
+      try {
+        const msg = JSON.parse(data.toString())
+        console.log(msg, this.host)
+        if(msg.connectionTable){
+          updateConnectionTable(msg.connectionTable)
+          const selfIndex = Object.keys(connectionTable).indexOf(msg.selfHost)
+          findPeers(selfIndex)
+        }
+      } catch(err) {
+        console.log('Invalid Message Received')
+      }
     })
 
     peer.on('error', () => {
-      console.log('peer error')
+      console.log('peer error', this.host)
       removePeer()
     })
 
     peer.on('end', () => {
-      console.log('peer left')
+      console.log('peer left', this.host)
       removePeer()
     })
 
@@ -38,19 +44,16 @@ class Peer {
       delete connectionTable[this.host]
     }
 
-    this.emit = (event, data) => {
-      peer.write(`#peer-${event}^^>${JSON.stringify(data)}`)
+    this.emit = (data) => {
+      peer.write(JSON.stringify(data))
     }
+  }
+}
 
-    this.connectionTable = (data) => {
-      connectionTable = {
-        ...connectionTable,
-        ...data.connectionTable
-      }
-
-      const selfIndex = Object.keys(connectionTable).indexOf(data.selfHost)
-      findPeers(selfIndex)
-    }
+function updateConnectionTable(update){
+  connectionTable = {
+    ...connectionTable,
+    ...update
   }
 }
 
@@ -69,15 +72,13 @@ function findPeers(startPeerIndex){
   }
 }
 
-function broadcast(event, data){
-  connectedPeers.forEach(peer => {
-    peer.emit(event, data)
-  })
+function broadcast(data){
+  connectedPeers.forEach(peer => peer.emit(data))
 }
 
 const server = net.createServer((peer) => {
   const newClientPeer = new Peer(peer)
-  newClientPeer.emit('connectionTable', {
+  newClientPeer.emit({
     selfHost: newClientPeer.host,
     connectionTable
   })
