@@ -2,8 +2,10 @@
 
 const net = require('net')
 const prompt = require('prompt')
+const uuid = require('uuid/v1')
 
 const port = 1995
+const messages = {}
 const connectedPeers = []
 let connectionTable = {}
 
@@ -18,11 +20,16 @@ class Peer {
     peer.on('data', (data) => {
       try {
         const msg = JSON.parse(data.toString())
-        console.log(msg, this.host)
         if(msg.connectionTable){
           updateConnectionTable(msg.connectionTable)
           const selfIndex = Object.keys(connectionTable).indexOf(msg.selfHost)
           findPeers(selfIndex)
+        }
+
+        if(msg.message && !messages[msg.id]){
+          console.log(msg.message)
+          messages[msg.id] = msg.message
+          broadcast(msg, peer)
         }
       } catch(err) {
         console.log('Invalid Message Received')
@@ -72,8 +79,22 @@ function findPeers(startPeerIndex){
   }
 }
 
-function broadcast(data){
-  connectedPeers.forEach(peer => peer.emit(data))
+function broadcast(data, sender){
+  connectedPeers.forEach(peer => {
+    if(peer === sender) return
+    peer.emit(data)
+  })
+}
+
+function promptMessage(){
+  prompt.get('message', (err, result) => {
+    if(err) return
+    broadcast({
+      id: uuid(),
+      ...result
+    })
+    promptMessage()
+  })
 }
 
 const server = net.createServer((peer) => {
@@ -86,6 +107,7 @@ const server = net.createServer((peer) => {
 
 prompt.start()
 prompt.get('host', (err, result) => {
+  promptMessage()
   if(err || !result.host) return
   const {host} = result
   const hostPeer = net.connect({host, port})
