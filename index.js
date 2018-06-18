@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 
 const net = require('net')
-const prompt = require('prompt')
 const uuid = require('uuid/v1')
 const colors = require('colors')
+const readline = require('readline')
 
 const port = 1995
 const messages = {}
 const connectedPeers = []
 let connectionTable = {}
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+})
 
 class Peer {
   constructor(peer, host){
@@ -88,12 +93,11 @@ function broadcast(data, sender){
 }
 
 function promptMessage(){
-  prompt.get('message', (err, result) => {
-    if(err) return
-    broadcast({
-      id: uuid(),
-      ...result
-    })
+  rl.question('Message: ', (message) => {
+    if(!message) return
+    const id = uuid()
+    messages[id] = message
+    broadcast({id, message})
     promptMessage()
   })
 }
@@ -106,11 +110,9 @@ const server = net.createServer((peer) => {
   })
 }).listen(port)
 
-prompt.start()
-prompt.get('host', (err, result) => {
+rl.question('Enter a Host Peer i.p: ', (host) => {
   promptMessage()
-  if(err || !result.host) return
-  const {host} = result
+  if(!host) return
   const hostPeer = net.connect({host, port})
   new Peer(hostPeer, host)
 })
